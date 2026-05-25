@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: chathub24-backend
+    env: docker
+    repo: https://github.com/Lingeshkumar24-code/chathub24
+    branch: main
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    disk: 1024
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
