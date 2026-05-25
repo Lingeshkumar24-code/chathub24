@@ -51,6 +51,14 @@ app.use('/api/chats', chatRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/friend-requests', friendRequestRoutes);
 
+app.get('/', (req, res) => {
+  res.json({
+    status: 'Server is running',
+    service: 'chathub24-backend',
+    health: '/api/health',
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running' });
