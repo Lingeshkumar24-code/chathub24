@@ -1,0 +1,204 @@
+/**
+ * Email Service
+ * Handles sending emails for friend requests and offline replies
+ */
+
+const nodemailer = require('nodemailer');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+// Configure email transporter
+const transporter = nodemailer.createTransport({
+  service: process.env.EMAIL_SERVICE || 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
+class EmailService {
+  /**
+   * Send friend request email
+   * @param {string} senderName - Name of person sending request
+   * @param {string} receiverEmail - Email of receiver
+   * @param {string} receiverName - Name of receiver
+   * @returns {Promise<Object>} Result of email send
+   */
+  static async sendFriendRequestEmail(senderName, receiverEmail, receiverName) {
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: receiverEmail,
+        subject: `${senderName} wants to be your friend!`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #333;">Friend Request</h2>
+            <p style="color: #666; font-size: 16px;">
+              Hi <strong>${receiverName}</strong>,
+            </p>
+            <p style="color: #666; font-size: 16px;">
+              <strong>${senderName}</strong> has sent you a friend request on our Chat Application!
+            </p>
+            <p style="color: #666; font-size: 16px;">
+              Accept their request to start chatting and connect with them.
+            </p>
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/friends/requests" 
+                 style="display: inline-block; padding: 12px 30px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                View Friend Requests
+              </a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              This is an automated message from our Chat Application. Please do not reply to this email.
+            </p>
+          </div>
+        `,
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('Error sending friend request email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send offline auto-reply email
+   * @param {string} senderEmail - Email of person who sent the message
+   * @param {string} senderName - Name of sender
+   * @param {string} offlineUserName - Name of offline user
+   * @param {string} originalMessage - Original message sent
+   * @param {string} aiResponse - AI generated response
+   * @returns {Promise<Object>} Result of email send
+   */
+  static async sendOfflineReplyEmail(senderEmail, senderName, offlineUserName, originalMessage, aiResponse) {
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: senderEmail,
+        subject: `Automatic reply from ${offlineUserName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #333;">Automatic Reply from ${offlineUserName}</h2>
+            <p style="color: #666; font-size: 16px;">
+              Hi <strong>${senderName}</strong>,
+            </p>
+            <p style="color: #666; font-size: 16px;">
+              Thank you for your message! <strong>${offlineUserName}</strong> is currently offline, but our AI assistant has processed your message:
+            </p>
+            
+            <div style="background-color: #f5f5f5; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0; border-radius: 4px;">
+              <p style="color: #666; margin: 0; font-style: italic;">
+                <strong>Your message:</strong><br/>
+                ${originalMessage}
+              </p>
+            </div>
+
+            <div style="background-color: #f5f5f5; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0; border-radius: 4px;">
+              <p style="color: #666; margin: 0;">
+                <strong>AI Assistant's Response:</strong><br/>
+                ${aiResponse}
+              </p>
+            </div>
+
+            <p style="color: #666; font-size: 16px;">
+              ${offlineUserName} will respond to your message when they come back online.
+            </p>
+
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              This is an automated message from our Chat Application. The reply above was generated by an AI assistant.
+            </p>
+          </div>
+        `,
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('Error sending offline reply email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send offline notification email (reminder)
+   * @param {string} receiverEmail - Email to send to
+   * @param {string} receiverName - Name of receiver
+   * @param {string} senderName - Name of person who messaged
+   * @returns {Promise<Object>} Result of email send
+   */
+  static async sendOfflineNotificationEmail(receiverEmail, receiverName, senderName) {
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: receiverEmail,
+        subject: `You have a new message from ${senderName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #333;">New Message</h2>
+            <p style="color: #666; font-size: 16px;">
+              Hi <strong>${receiverName}</strong>,
+            </p>
+            <p style="color: #666; font-size: 16px;">
+              <strong>${senderName}</strong> has sent you a message while you were offline. Log in to view and reply to their message.
+            </p>
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/chat" 
+                 style="display: inline-block; padding: 12px 30px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                View Messages
+              </a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              This is an automated message from our Chat Application.
+            </p>
+          </div>
+        `,
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('Error sending offline notification email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Test email configuration
+   * @param {string} testEmail - Email to send test to
+   * @returns {Promise<Object>} Result of test
+   */
+  static async testEmailConfiguration(testEmail) {
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: testEmail,
+        subject: 'Email Configuration Test',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #333;">Email Configuration Test</h2>
+            <p style="color: #666; font-size: 16px;">
+              Your email configuration is working correctly!
+            </p>
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              You can now proceed with using the chat application.
+            </p>
+          </div>
+        `,
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('Error in email configuration test:', error);
+      return { success: false, error: error.message };
+    }
+  }
+}
+
+module.exports = EmailService;

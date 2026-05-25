@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+npm-debug.log
+yarn-error.log
+coverage/
+.DS_Store
+dist/
+build/
+logs/
+*.log
+/.firebase
+serviceAccountKey.json
