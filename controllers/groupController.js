@@ -6,6 +6,7 @@
 const Group = require('../models/Group');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const AIService = require('../services/ai');
 
 /**
  * Create a new group
@@ -115,7 +116,25 @@ exports.sendGroupMessage = async (req, res) => {
       type,
     });
 
-    res.status(201).json(message);
+    let aiMessage = null;
+
+    if (AIService.isMentioningAI(content)) {
+      const cleanMessage = AIService.extractCleanMessage(content);
+      const recentMessages = await Message.getMessagesByChat(groupId, 10);
+      const aiResponse = await AIService.generateResponse(cleanMessage, recentMessages, group.name);
+
+      aiMessage = await Message.create(groupId, {
+        sender: 'ChatBot AI',
+        content: aiResponse,
+        type: 'ai_response',
+        mentions: [],
+      });
+    }
+
+    res.status(201).json({
+      message,
+      aiMessage,
+    });
   } catch (error) {
     console.error('Error sending message:', error);
     res.status(500).json({ message: 'Error sending message' });

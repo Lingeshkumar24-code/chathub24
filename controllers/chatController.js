@@ -6,6 +6,7 @@
 const Chat = require('../models/Chat');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const OfflineReplyService = require('../services/offlineReplyService');
 
 /**
  * Get or create private chat
@@ -112,7 +113,37 @@ exports.sendMessage = async (req, res) => {
     // Update chat's last message
     await Chat.updateLastMessage(chatId, content);
 
-    res.status(201).json(message);
+    let autoReplyMessage = null;
+
+    const participants = chat.participants || [];
+    if (participants.length === 2) {
+      const recipientId = participants.find(participant => participant !== userId);
+      if (recipientId) {
+        const recipient = await User.getById(recipientId);
+
+        if (recipient.status === 'offline') {
+          const shouldAutoReply = await OfflineReplyService.shouldAutoReply(recipientId);
+
+          if (shouldAutoReply) {
+            const replyResult = await OfflineReplyService.handleOfflineMessage(
+              chatId,
+              recipientId,
+              userId,
+              content
+            );
+
+            if (replyResult.success && replyResult.botMessage) {
+              autoReplyMessage = replyResult.botMessage;
+            }
+          }
+        }
+      }
+    }
+
+    res.status(201).json({
+      message,
+      autoReplyMessage,
+    });
   } catch (error) {
     console.error('Error sending message:', error);
     res.status(500).json({ message: 'Error sending message' });

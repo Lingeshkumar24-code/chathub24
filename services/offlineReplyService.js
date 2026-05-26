@@ -7,6 +7,8 @@ const AIService = require('./ai');
 const EmailService = require('./emailService');
 const OfflineAutoReply = require('../models/OfflineAutoReply');
 const User = require('../models/User');
+const Message = require('../models/Message');
+const Chat = require('../models/Chat');
 
 class OfflineReplyService {
   /**
@@ -16,7 +18,7 @@ class OfflineReplyService {
    * @param {string} message - Message content
    * @returns {Promise<Object>} Result with generated reply
    */
-  static async handleOfflineMessage(offlineUserId, senderId, message) {
+  static async handleOfflineMessage(chatId, offlineUserId, senderId, message) {
     try {
       // Get offline user settings
       const autoReplySettings = await OfflineAutoReply.getAutoReply(offlineUserId);
@@ -53,9 +55,19 @@ class OfflineReplyService {
         emailResult.success
       );
 
+      const botMessage = await Message.create(chatId, {
+        sender: 'ChatBot AI',
+        content: aiResponse,
+        type: 'ai_response',
+        mentions: [],
+      });
+
+      await Chat.updateLastMessage(chatId, aiResponse);
+
       return {
         success: true,
         aiResponse,
+        botMessage,
         emailSent: emailResult.success,
       };
     } catch (error) {
@@ -96,6 +108,10 @@ class OfflineReplyService {
    */
   static async generateOfflineReply(userMessage, systemPrompt) {
     try {
+      if (!process.env.GROQ_API_KEY) {
+        return 'Thank you for your message. I will respond when I return online.';
+      }
+
       const Groq = require('groq-sdk');
       const GROQ_MODEL = 'llama-3.1-8b-instant';
 

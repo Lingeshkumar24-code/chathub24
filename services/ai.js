@@ -5,9 +5,12 @@
 
 const Groq = require('groq-sdk');
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+const hasGroqApiKey = Boolean(process.env.GROQ_API_KEY);
+const groq = hasGroqApiKey
+  ? new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    })
+  : null;
 
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 
@@ -21,6 +24,10 @@ class AIService {
    */
   static async generateResponse(userMessage, conversationHistory = [], groupName = 'Chat') {
     try {
+      if (!groq) {
+        return 'ChatBot AI is running without Groq configured. Please set GROQ_API_KEY on the server to enable live AI responses.';
+      }
+
       // Build conversation history for context
       const messages = [
         {
@@ -60,6 +67,10 @@ class AIService {
    */
   static async summaryzeConversation(messages, groupName = 'Chat') {
     try {
+      if (!groq) {
+        return 'Groq is not configured, so I cannot generate a live summary right now.';
+      }
+
       const conversationText = messages
         .map(msg => `${msg.sender}: ${msg.content}`)
         .join('\n');
@@ -95,6 +106,14 @@ class AIService {
    */
   static async getSuggestions(topic) {
     try {
+      if (!groq) {
+        return [
+          'What should we decide next?',
+          'Can you explain that in a bit more detail?',
+          'What is the main goal here?'
+        ];
+      }
+
       const response = await groq.chat.completions.create({
         model: GROQ_MODEL,
         messages: [
